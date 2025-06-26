@@ -1,9 +1,11 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route,Link } from 'react-router-dom';
 import KakaoLogin from './KakaoLogin';
 import AuthRedirectHandler from './AuthRedirectHandler';
-import ProfileForm from './ProfileForm'; // 새로 만든 폼 컴포넌트 import
+import ProfileForm from './ProfileForm';
+import AdminPage from "./AdminPage.jsx";
+import api from "./api.js";
 
 function App() {
     const [user, setUser] = useState(null);
@@ -88,10 +90,21 @@ function App() {
     return (
         <BrowserRouter>
             <div style={{ padding: '20px', textAlign: 'center' }}>
-                <h1>배드민턴 MMR 시스템</h1>
+                <header style={{ marginBottom: '20px', paddingBottom: '10px', borderBottom: '1px solid #eee' }}>
+                    <h1 style={{ margin: 0 }}>배드민턴 MMR 시스템</h1>
+                    <nav>
+                        {/* ⭐ [추가] : 로그인한 사용자가 ADMIN일 경우에만 관리자 페이지 링크를 보여줌 */}
+                        {user && user.role === 'ADMIN' && (
+                            <Link to="/admin" style={{ marginLeft: '20px' }}>관리자 페이지</Link>
+                        )}
+                    </nav>
+                </header>
+
                 <Routes>
                     <Route path="/" element={<MainContent />} />
                     <Route path="/auth/kakao/callback" element={<AuthRedirectHandler onLoginSuccess={handleLoginSuccess} />} />
+                    {/* ⭐ [추가] : /admin 경로에 AdminPage 컴포넌트를 연결 */}
+                    <Route path="/admin" element={<AdminPage />} />
                 </Routes>
             </div>
         </BrowserRouter>

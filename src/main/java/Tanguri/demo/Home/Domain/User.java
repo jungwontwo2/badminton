@@ -65,4 +65,9 @@ public class User {
         this.gradeSi = gradeSi;
         this.gradeNational = gradeNational;
     }
+
+    // 관리자가 사용자를 인증하는 함수
+    public void verifyUser(){
+        this.status = UserStatus.VERIFIED;
+    }
 }

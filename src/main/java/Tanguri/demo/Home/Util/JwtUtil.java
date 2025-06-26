@@ -48,6 +48,11 @@ public class JwtUtil {
         return Long.parseLong(getClaims(token).getSubject());
     }
 
+    //JWT 토큰에서 ROLE 정보 추출
+    public String getRoleFromToken(String token){
+        return getClaims(token).get("role",String.class);
+    }
+
     private Claims getClaims(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody();
