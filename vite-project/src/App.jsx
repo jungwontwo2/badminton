@@ -5,6 +5,7 @@ import KakaoLogin from './KakaoLogin';
 import AuthRedirectHandler from './AuthRedirectHandler';
 import ProfileForm from './ProfileForm';
 import AdminPage from "./AdminPage.jsx";
+import MatchResultForm from './MatchResultForm';
 import api from "./api.js";
 
 function App() {
@@ -93,9 +94,13 @@ function App() {
                 <header style={{ marginBottom: '20px', paddingBottom: '10px', borderBottom: '1px solid #eee' }}>
                     <h1 style={{ margin: 0 }}>배드민턴 MMR 시스템</h1>
                     <nav>
-                        {/* ⭐ [추가] : 로그인한 사용자가 ADMIN일 경우에만 관리자 페이지 링크를 보여줌 */}
+                        <Link to="/" style={{ marginRight: '20px' }}>메인</Link>
+                        {/* ⭐ [수정] : 로그인한 인증 유저에게 경기 결과 등록 링크를 보여줌 */}
+                        {user && user.status === 'VERIFIED' && (
+                            <Link to="/record-match" style={{ marginRight: '20px' }}>경기 결과 등록</Link>
+                        )}
                         {user && user.role === 'ADMIN' && (
-                            <Link to="/admin" style={{ marginLeft: '20px' }}>관리자 페이지</Link>
+                            <Link to="/admin">관리자 페이지</Link>
                         )}
                     </nav>
                 </header>
@@ -105,6 +110,8 @@ function App() {
                     <Route path="/auth/kakao/callback" element={<AuthRedirectHandler onLoginSuccess={handleLoginSuccess} />} />
                     {/* ⭐ [추가] : /admin 경로에 AdminPage 컴포넌트를 연결 */}
                     <Route path="/admin" element={<AdminPage />} />
+                    {/* ⭐ [추가] : /record-match 경로에 MatchResultForm 컴포넌트를 연결 */}
+                    <Route path="/record-match" element={<MatchResultForm />} />
                 </Routes>
             </div>
         </BrowserRouter>

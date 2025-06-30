@@ -30,6 +30,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/**").permitAll() // '/auth/**' 경로는 누구나 접근 가능
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users/**", "/api/matches").hasAnyRole("USER", "ADMIN")
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )
                 // 직접 만든 JWT 필터를 Spring Security 필터 체인에 추가

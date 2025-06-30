@@ -26,7 +26,7 @@ public class UserService {
 
     @Transactional
     public User updateProfile(Long userId, ProfileUpdateDto profileUpdateDto) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found with id :" + userId));
+        User user = getUserById(userId); // 위에서 만든 메서드 재사용
 
         user.updateAdditionalInfo(
             profileUpdateDto.getClub(),
@@ -50,5 +50,11 @@ public class UserService {
         User user = getUserById(userId);
         user.verifyUser();
         return user;
+    }
+
+    //인증된 상태인 모든 사용자를 조회
+    @Transactional(readOnly = true)
+    public List<User> getVerifiedUsers(){
+        return userRepository.findByStatus(UserStatus.VERIFIED);
     }
 }

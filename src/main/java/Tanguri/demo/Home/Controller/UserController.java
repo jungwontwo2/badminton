@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/users")
@@ -29,5 +31,11 @@ public class UserController {
         long userId = Long.parseLong(authentication.getName());
         User updatedUser = userService.updateProfile(userId, profileUpdateDto);
         return ResponseEntity.ok(updatedUser);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<User>> getAllVerifiedUsers(){
+        List<User> users = userService.getVerifiedUsers();
+        return ResponseEntity.ok(users);
     }
 }

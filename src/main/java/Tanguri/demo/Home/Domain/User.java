@@ -18,6 +18,7 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 우리 시스템의 기본 키
 
+    @Column(columnDefinition = "BIGINT",unique = true)
     private Long kakaoId; // 카카오가 제공하는 고유 ID
 
     private String nickname;
@@ -38,6 +39,7 @@ public class User {
 
     private String club;   //클럽
     private String ageGroup; //나이대
+    private Integer mmr;    //MMR
     private String gradeGu;  //구 급수
     private String gradeSi;  //시 급수
     private String gradeNational;//전국 급수
@@ -49,6 +51,7 @@ public class User {
         this.profileImageUrl = profileImageUrl;
         this.role = role;
         this.status = status;
+        this.mmr = 1200;
     }
 
     // 프로필 정보 업데이트를 위한 메서드
@@ -69,5 +72,9 @@ public class User {
     // 관리자가 사용자를 인증하는 함수
     public void verifyUser(){
         this.status = UserStatus.VERIFIED;
+    }
+
+    public void updateMmr(Integer newMmr){
+        this.mmr = newMmr;
     }
 }
