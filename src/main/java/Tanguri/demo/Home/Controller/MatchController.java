@@ -22,24 +22,11 @@ public class MatchController {
 
     @PostMapping
     public ResponseEntity<String> recordMatch(Authentication authentication, @RequestBody MatchRequestDto matchRequestDto) {
+        //컨트롤러는 이제 DTO를 서비스로 전달하는 역할만 함
+        //선수 정보를 조회하고, 경기 결과를 '승인대기'상태로 저장하는 로직은
+        //MmrService의 recordMatch 메서드가 책임짐
+        mmrService.recordMatch(matchRequestDto);
 
-        // 1. DTO에서 받은 ID를 사용하여 각 선수의 User 엔티티를 DB에서 조회
-        User winner1 = userService.getUserById(matchRequestDto.getWinner1Id());
-        User loser1 = userService.getUserById(matchRequestDto.getLoser1Id());
-
-        // 2. 복식 경기인지, 단식 경기인지 확인
-        User winner2 = (matchRequestDto.getWinner2Id() != null) ? userService.getUserById(matchRequestDto.getWinner2Id()) : null;
-        User loser2 = (matchRequestDto.getLoser2Id() != null) ? userService.getUserById(matchRequestDto.getLoser2Id()) : null;
-
-        // 3. 조회한 User 엔티티들과 점수 정보를 MmrService로 전달하여 MMR 처리 및 기록 결과 기록을 요청
-        mmrService.recordMatchAndProcessMmr(
-                winner1,winner2,
-                loser1,loser2,
-                matchRequestDto.getWinnerScore(),
-                matchRequestDto.getLoserScore()
-        );
-
-        //성공적으로 처리되었음을 알리는 응답 반환
-        return ResponseEntity.ok("Match recorded successfully");
+        return ResponseEntity.ok("Match recorded successfully. Waiting for admin approval");
     }
 }

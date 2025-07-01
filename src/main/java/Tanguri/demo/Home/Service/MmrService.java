@@ -5,6 +5,7 @@ import Tanguri.demo.Home.Domain.MatchStatus;
 import Tanguri.demo.Home.Domain.MmrChangeLog;
 import Tanguri.demo.Home.Domain.User;
 import Tanguri.demo.Home.Dto.MatchRequestDto;
+import Tanguri.demo.Home.Dto.PendingMatchDto;
 import Tanguri.demo.Home.Repository.MatchResultRepository;
 import Tanguri.demo.Home.Repository.MmrChangeLogRepository;
 import Tanguri.demo.Home.Repository.UserRepository;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +44,18 @@ public class MmrService {
                 .build();
 
         matchResultRepository.save(matchResult);
+    }
+
+    //관리자 페이지에 보여줄 '승인 대기' 상태인 모든 경기 결과 조회
+    @Transactional(readOnly = true)
+    public List<PendingMatchDto> getPendingMatches(){
+        //승인대기 상태인 경기결과 가져오기
+        List<MatchResult> pendingMatches = matchResultRepository.findByStatus(MatchStatus.PENDING);
+
+        // 해당 엔티티 리스트를 DTO 리스트로 변환하여 반환
+        return pendingMatches.stream()
+                .map(PendingMatchDto::new)
+                .collect(Collectors.toList());
     }
 
     //팀 MMR 평균 계산
