@@ -15,4 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     //특정 상태의 모든 사용자를 찾는 쿼리 메서드
     List<User> findByStatus(UserStatus status);
+
+    //인증된 사용자들을 MMR 점수가 높은 순으로 정렬하여 모두 조회
+    List<User> findByStatusOrderByMmrDesc(UserStatus status);
 }

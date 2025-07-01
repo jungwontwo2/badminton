@@ -4,6 +4,7 @@ package Tanguri.demo.Home.Service;
 import Tanguri.demo.Home.Domain.User;
 import Tanguri.demo.Home.Domain.UserStatus;
 import Tanguri.demo.Home.Dto.ProfileUpdateDto;
+import Tanguri.demo.Home.Dto.RankingDto;
 import Tanguri.demo.Home.Repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -70,5 +72,17 @@ public class UserService {
 
         //거절된 사용자는 상태를 REJECTED로 변경
         user.rejectUser();
+    }
+
+    //랭킹 정보 조회
+    @Transactional(readOnly = true)
+    public List<RankingDto> getRanking(){
+        //인정된 사용자들을 MMR 높은 순으로 정렬하여 가져옴
+        List<User> users = userRepository.findByStatusOrderByMmrDesc(UserStatus.VERIFIED);
+
+        //조회한 User 엔티티 리스트를 RankingDto 리스트로 변환.
+        return users.stream()
+                .map(RankingDto::new)
+                .collect(Collectors.toList());
     }
 }

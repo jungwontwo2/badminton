@@ -29,6 +29,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/**").permitAll() // '/auth/**' 경로는 누구나 접근 가능
+                        .requestMatchers("/api/rankings").permitAll()//랭킹쪽은 누구자 접근 가능
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )

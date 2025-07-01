@@ -6,6 +6,7 @@ import AuthRedirectHandler from './AuthRedirectHandler';
 import ProfileForm from './ProfileForm';
 import AdminPage from "./AdminPage.jsx";
 import MatchResultForm from './MatchResultForm';
+import RankingPage from "./RankingPage.jsx";
 import api from "./api.js";
 
 function App() {
@@ -95,6 +96,7 @@ function App() {
                     <h1 style={{ margin: 0 }}>배드민턴 MMR 시스템</h1>
                     <nav>
                         <Link to="/" style={{ marginRight: '20px' }}>메인</Link>
+                        <Link to="/rankings" style={{ marginRight: '20px' }}>랭킹</Link>
                         {/* ⭐ [수정] : 로그인한 인증 유저에게 경기 결과 등록 링크를 보여줌 */}
                         {user && user.status === 'VERIFIED' && (
                             <Link to="/record-match" style={{ marginRight: '20px' }}>경기 결과 등록</Link>
@@ -112,6 +114,7 @@ function App() {
                     <Route path="/admin" element={<AdminPage />} />
                     {/* ⭐ [추가] : /record-match 경로에 MatchResultForm 컴포넌트를 연결 */}
                     <Route path="/record-match" element={<MatchResultForm />} />
+                    <Route path="/rankings" element={<RankingPage />} />
                 </Routes>
             </div>
         </BrowserRouter>
