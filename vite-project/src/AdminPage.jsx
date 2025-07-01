@@ -26,6 +26,7 @@ function AdminPage() {
         fetchData();
     }, []);
 
+    //사용자 가입 승인
     const handleVerifyUser = async (userId) => {
         if (!window.confirm("이 사용자를 인증 처리하시겠습니까?")) return;
         try {
@@ -35,6 +36,18 @@ function AdminPage() {
             alert("사용자 인증 처리가 완료되었습니다.");
         } catch (err) {
             alert("사용자 인증 처리에 실패했습니다: " + err.message);
+        }
+    };
+
+    //사용자 가입 거절
+    const handleRejectUser = async (userId) => {
+        if (!window.confirm("이 사용자의 가입을 [거절]하시겠습니까?")) return;
+        try {
+            await api.patch(`/api/admin/users/${userId}/reject`);
+            setUnverifiedUsers(currentUsers => currentUsers.filter(user => user.id !== userId));
+            alert("사용자 가입 요청이 거절 처리되었습니다.");
+        } catch (err) {
+            alert("가입 거절 처리에 실패했습니다: " + err.message);
         }
     };
 
@@ -65,6 +78,14 @@ function AdminPage() {
     if (loading) return <div>관리자 페이지 데이터를 불러오는 중...</div>;
     if (error) return <div>에러 발생: {error.response?.data?.message || error.message} (관리자 권한이 있는지 확인하세요)</div>;
 
+    const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'center', marginTop: '10px' };
+    const thStyle = { padding: '12px', border: '1px solid #ddd', backgroundColor: '#f8f9fa' };
+    const tdStyle = { padding: '10px', border: '1px solid #ddd', verticalAlign: 'middle' }; // ⭐ 핵심: 세로 중앙 정렬
+    const buttonGroupStyle = { display: 'flex', justifyContent: 'center', gap: '5px' };
+    const baseButtonStyle = { color: 'white', border: 'none', padding: '8px 12px', cursor: 'pointer', borderRadius: '5px', fontSize: '14px' };
+    const greenButtonStyle = { ...baseButtonStyle, backgroundColor: '#28a745' };
+    const redButtonStyle = { ...baseButtonStyle, backgroundColor: '#dc3545' };
+
     return (
         <div style={{ maxWidth: '1000px', margin: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
@@ -78,22 +99,27 @@ function AdminPage() {
             <section>
                 <h3>미인증 사용자 목록</h3>
                 {unverifiedUsers.length === 0 ? <p>인증을 기다리는 사용자가 없습니다.</p> : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-                        <thead style={{ backgroundColor: '#f2f2f2' }}>
+                    <table style={tableStyle}>
+                        <thead>
                         <tr>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>프로필</th>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>닉네임</th>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>가입일</th>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>인증 처리</th>
+                            <th style={thStyle}>프로필</th>
+                            <th style={thStyle}>닉네임</th>
+                            <th style={thStyle}>가입일</th>
+                            <th style={thStyle}>인증 처리</th>
                         </tr>
                         </thead>
                         <tbody>
                         {unverifiedUsers.map(user => (
                             <tr key={user.id}>
-                                <td style={{padding: '10px', border: '1px solid #ddd'}}><img src={user.profileImageUrl} alt="profile" width="50" style={{ borderRadius: '50%' }}/></td>
-                                <td style={{padding: '10px', border: '1px solid #ddd'}}>{user.nickname}</td>
-                                <td style={{padding: '10px', border: '1px solid #ddd'}}>{new Date(user.createdAt).toLocaleDateString()}</td>
-                                <td style={{padding: '10px', border: '1px solid #ddd'}}><button onClick={() => handleVerifyUser(user.id)}>인증</button></td>
+                                <td style={tdStyle}><img src={user.profileImageUrl} alt="profile" width="50" style={{ borderRadius: '50%' }}/></td>
+                                <td style={tdStyle}>{user.nickname}</td>
+                                <td style={tdStyle}>{new Date(user.createdAt).toLocaleDateString()}</td>
+                                <td style={tdStyle}>
+                                    <div style={buttonGroupStyle}>
+                                        <button onClick={() => handleVerifyUser(user.id)} style={greenButtonStyle}>인증</button>
+                                        <button onClick={() => handleRejectUser(user.id)} style={redButtonStyle}>거절</button>
+                                    </div>
+                                </td>
                             </tr>
                         ))}
                         </tbody>
@@ -107,28 +133,28 @@ function AdminPage() {
             <section>
                 <h3>승인 대기 경기 목록</h3>
                 {pendingMatches.length === 0 ? <p>승인을 기다리는 경기 결과가 없습니다.</p> : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-                        <thead style={{ backgroundColor: '#f2f2f2' }}>
+                    <table style={tableStyle}>
+                        <thead>
                         <tr>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>승리팀</th>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>패배팀</th>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>스코어</th>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>경기 날짜</th>
-                            <th style={{padding: '10px', border: '1px solid #ddd'}}>승인 처리</th>
+                            <th style={thStyle}>승리팀</th>
+                            <th style={thStyle}>패배팀</th>
+                            <th style={thStyle}>스코어</th>
+                            <th style={thStyle}>경기 날짜</th>
+                            <th style={thStyle}>승인 처리</th>
                         </tr>
                         </thead>
                         <tbody>
-                        {/* ⭐ [수정] key와 onClick 핸들러에서 모두 올바른 matchId를 사용합니다. */}
                         {pendingMatches.map(match => (
                             <tr key={match.matchId}>
-                                <td>{match.winner1Name} {match.winner2Name && `/ ${match.winner2Name}`}</td>
-                                <td>{match.loser1Name} {match.loser2Name && `/ ${match.loser2Name}`}</td>
-                                <td>{match.winnerScore} : {match.loserScore}</td>
-                                <td>{new Date(match.matchDate).toLocaleDateString()}</td>
-                                <td style={{ display: 'flex', justifyContent: 'center', gap: '5px' }}>
-                                    {/* ⭐ [수정] 승인 버튼과 거절 버튼을 함께 표시합니다. */}
-                                    <button onClick={() => handleConfirmMatch(match.matchId)} style={{backgroundColor: '#28a745', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '3px'}}>승인</button>
-                                    <button onClick={() => handleRejectMatch(match.matchId)} style={{backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '3px'}}>거절</button>
+                                <td style={tdStyle}>{match.winner1Name} {match.winner2Name && `/ ${match.winner2Name}`}</td>
+                                <td style={tdStyle}>{match.loser1Name} {match.loser2Name && `/ ${match.loser2Name}`}</td>
+                                <td style={tdStyle}>{match.winnerScore} : {match.loserScore}</td>
+                                <td style={tdStyle}>{new Date(match.matchDate).toLocaleDateString()}</td>
+                                <td style={tdStyle}>
+                                    <div style={buttonGroupStyle}>
+                                        <button onClick={() => handleConfirmMatch(match.matchId)} style={greenButtonStyle}>승인</button>
+                                        <button onClick={() => handleRejectMatch(match.matchId)} style={redButtonStyle}>거절</button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

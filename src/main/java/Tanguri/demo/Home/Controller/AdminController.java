@@ -33,6 +33,13 @@ public class AdminController {
         return ResponseEntity.ok(verifiedUser);
     }
 
+    //특정 사용자의 가입 거절
+    @PatchMapping("/users/{userId}/reject")
+    public ResponseEntity<String> rejectUser(@PathVariable Long userId){
+        userService.rejectUser(userId);
+        return ResponseEntity.ok("사용자 가입 요청이 거절 처리되었습니다.");
+    }
+
     //'승인 대기' 상태인 경기 목록들 조회하는 API
     @GetMapping("/matches/pending")
     public ResponseEntity<List<PendingMatchDto>> getPendingMatches(){

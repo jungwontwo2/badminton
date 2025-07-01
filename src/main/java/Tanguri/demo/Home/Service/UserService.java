@@ -57,4 +57,18 @@ public class UserService {
     public List<User> getVerifiedUsers(){
         return userRepository.findByStatus(UserStatus.VERIFIED);
     }
+
+    // 회원가입 인증 거절
+    @Transactional
+    public void rejectUser(Long userId){
+        User user = getUserById(userId);
+
+        //이미 인증된 사용자이니지 아닌지
+        if (user.getStatus() == UserStatus.VERIFIED) {
+            throw new IllegalStateException("이미 인증된 사용자는 거절할 수 없습니다.");
+        }
+
+        //거절된 사용자는 상태를 REJECTED로 변경
+        user.rejectUser();
+    }
 }

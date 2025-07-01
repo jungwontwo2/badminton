@@ -30,6 +30,7 @@ public class User {
     private Role role; // 역할 (USER, ADMIN)
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private UserStatus status; // 계정 상태 (VERIFIED, UNVERIFIED)
 
 
@@ -73,6 +74,12 @@ public class User {
     public void verifyUser(){
         this.status = UserStatus.VERIFIED;
     }
+
+    //관리자가 가입 거절시키는 함수
+    public void rejectUser(){
+        this.status = UserStatus.REJECTED;
+    }
+
 
     public void updateMmr(Integer newMmr){
         this.mmr = newMmr;
