@@ -43,6 +43,10 @@ public class MatchResult {
     @Column(updatable = false)
     private LocalDateTime matchDate;
 
+    //경기 결과 상태를 저장하는 필드
+    @Enumerated(EnumType.STRING)
+    private MatchStatus status;
+
     @Builder
     public MatchResult(User winner1, User winner2, User loser1, User loser2, Integer winnerScore, Integer loserScore, Integer mmrChange) {
         this.winner1 = winner1;
@@ -51,6 +55,22 @@ public class MatchResult {
         this.loser2 = loser2;
         this.winnerScore = winnerScore;
         this.loserScore = loserScore;
+        this.mmrChange = mmrChange;
+        this.status = MatchStatus.PENDING;  // 처음 생성될 때 기본 상태를 '승인 대기'로 설정
+    }
+
+    //관리자가 경기 결과를 승인
+    public void confirmMatch(){
+        this.status = MatchStatus.CONFIRMED;
+    }
+
+    //관리자가 경기 결과 거절
+    public void rejectMatch(){
+        this.status = MatchStatus.REJECTED;
+    }
+
+    //MMR 업데이트
+    public void setMmrChange(Integer mmrChange){
         this.mmrChange = mmrChange;
     }
 }
