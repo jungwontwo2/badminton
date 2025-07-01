@@ -46,4 +46,11 @@ public class AdminController {
         mmrService.confirmMatchAndProcessMmr(matchId);
         return ResponseEntity.ok("경기가 성공적으로 승인 처리되었습니다.");
     }
+
+    //경기 결과 거부 API
+    @PatchMapping("/matches/{matchId}/reject")
+    public ResponseEntity<String> rejectMatch(@PathVariable Long matchId){
+        mmrService.rejectMatch(matchId);
+        return ResponseEntity.ok("경기가 거부되었습니다.");
+    }
 }

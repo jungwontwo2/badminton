@@ -50,6 +50,18 @@ function AdminPage() {
         }
     };
 
+    // 경기 거절처리
+    const handleRejectMatch = async (matchId) => {
+        if (!window.confirm("이 경기 결과를 [거절]하시겠습니까? 이 결과는 영구적으로 무시됩니다.")) return;
+        try {
+            await api.patch(`/api/admin/matches/${matchId}/reject`);
+            setPendingMatches(currentMatches => currentMatches.filter(match => match.matchId !== matchId));
+            alert("경기 결과가 거절 처리되었습니다.");
+        } catch (err) {
+            alert("경기 결과 거절에 실패했습니다: " + err.message);
+        }
+    };
+
     if (loading) return <div>관리자 페이지 데이터를 불러오는 중...</div>;
     if (error) return <div>에러 발생: {error.response?.data?.message || error.message} (관리자 권한이 있는지 확인하세요)</div>;
 
@@ -113,7 +125,11 @@ function AdminPage() {
                                 <td>{match.loser1Name} {match.loser2Name && `/ ${match.loser2Name}`}</td>
                                 <td>{match.winnerScore} : {match.loserScore}</td>
                                 <td>{new Date(match.matchDate).toLocaleDateString()}</td>
-                                <td><button onClick={() => handleConfirmMatch(match.matchId)}>승인</button></td>
+                                <td style={{ display: 'flex', justifyContent: 'center', gap: '5px' }}>
+                                    {/* ⭐ [수정] 승인 버튼과 거절 버튼을 함께 표시합니다. */}
+                                    <button onClick={() => handleConfirmMatch(match.matchId)} style={{backgroundColor: '#28a745', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '3px'}}>승인</button>
+                                    <button onClick={() => handleRejectMatch(match.matchId)} style={{backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '3px'}}>거절</button>
+                                </td>
                             </tr>
                         ))}
                         </tbody>

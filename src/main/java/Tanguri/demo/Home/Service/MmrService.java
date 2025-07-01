@@ -58,6 +58,19 @@ public class MmrService {
                 .collect(Collectors.toList());
     }
 
+    //경기 결과 거부
+    @Transactional
+    public void rejectMatch(Long matchId){
+        MatchResult matchResult = matchResultRepository.findById(matchId)
+                .orElseThrow(() -> new EntityNotFoundException("Match Not Found with id: " + matchId));
+
+        if(matchResult.getStatus() != MatchStatus.PENDING){
+            throw new IllegalStateException("이미 처리된 경기입니다.");
+        }
+        //MMR 계산 없이 상태만 REJECTED로 변경
+        matchResult.rejectMatch();
+    }
+
     //팀 MMR 평균 계산
     private double calculateTeamAvgMmr(User player1, User player2) {
         if(player2 == null){
