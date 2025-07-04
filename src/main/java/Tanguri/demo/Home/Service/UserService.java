@@ -10,6 +10,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -76,9 +77,17 @@ public class UserService {
 
     //랭킹 정보 조회
     @Transactional(readOnly = true)
-    public List<RankingDto> getRanking(){
-        //인정된 사용자들을 MMR 높은 순으로 정렬하여 가져옴
-        List<User> users = userRepository.findByStatusOrderByMmrDesc(UserStatus.VERIFIED);
+    public List<RankingDto> getRanking(String nickname){
+        List<User> users;
+
+        //검색어(nickname)가 있는지 없는지에 따라 다른 쿼리 실행
+        if(StringUtils.hasText(nickname)){
+            //검색어가 있는 경우: 닉네임으로 검색
+            users = userRepository.findByStatusAndNicknameContainingIgnoreCaseOrderByMmrDesc(UserStatus.VERIFIED, nickname);
+        }else {
+            //검색어 없는 경우 : 전체 랭킹 MMR 순으로 조회
+            users = userRepository.findByStatusOrderByMmrDesc(UserStatus.VERIFIED);
+        }
 
         //조회한 User 엔티티 리스트를 RankingDto 리스트로 변환.
         return users.stream()

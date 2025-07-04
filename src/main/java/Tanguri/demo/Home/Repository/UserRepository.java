@@ -18,4 +18,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     //인증된 사용자들을 MMR 점수가 높은 순으로 정렬하여 모두 조회
     List<User> findByStatusOrderByMmrDesc(UserStatus status);
+
+    //인증된 사용자들 중 닉네임에 특정 문자열 포함하는 사용자를 MMR 점수 높은 순으로 정렬(검색하는데 필요한 메서드)
+    List<User> findByStatusAndNicknameContainingIgnoreCaseOrderByMmrDesc(UserStatus status, String nickname);
 }
