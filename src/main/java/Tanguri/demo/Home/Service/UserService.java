@@ -5,6 +5,7 @@ import Tanguri.demo.Home.Domain.User;
 import Tanguri.demo.Home.Domain.UserStatus;
 import Tanguri.demo.Home.Dto.ProfileUpdateDto;
 import Tanguri.demo.Home.Dto.RankingDto;
+import Tanguri.demo.Home.Dto.SearchCond;
 import Tanguri.demo.Home.Repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -77,19 +78,9 @@ public class UserService {
 
     //랭킹 정보 조회
     @Transactional(readOnly = true)
-    public List<RankingDto> getRanking(String nickname){
-        List<User> users;
+    public List<RankingDto> getRanking(SearchCond searchCond){
+        List<User> users = userRepository.searchUsers(searchCond);
 
-        //검색어(nickname)가 있는지 없는지에 따라 다른 쿼리 실행
-        if(StringUtils.hasText(nickname)){
-            //검색어가 있는 경우: 닉네임으로 검색
-            users = userRepository.findByStatusAndNicknameContainingIgnoreCaseOrderByMmrDesc(UserStatus.VERIFIED, nickname);
-        }else {
-            //검색어 없는 경우 : 전체 랭킹 MMR 순으로 조회
-            users = userRepository.findByStatusOrderByMmrDesc(UserStatus.VERIFIED);
-        }
-
-        //조회한 User 엔티티 리스트를 RankingDto 리스트로 변환.
         return users.stream()
                 .map(RankingDto::new)
                 .collect(Collectors.toList());

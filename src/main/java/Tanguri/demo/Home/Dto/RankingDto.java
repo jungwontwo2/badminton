@@ -11,6 +11,9 @@ public class RankingDto {
     private Integer mmr;
     private String club;
     private String gradeGu;
+    private String gradeSi;
+    private String gradeNational;
+    private String ageGroup;
 
     public RankingDto(User user) {
         this.userId = user.getId();
@@ -19,5 +22,8 @@ public class RankingDto {
         this.mmr = user.getMmr();
         this.club = user.getClub();
         this.gradeGu = user.getGradeGu();
+        this.ageGroup = user.getAgeGroup();
+        this.gradeSi = user.getGradeSi();
+        this.gradeNational = user.getGradeNational();
     }
 }
