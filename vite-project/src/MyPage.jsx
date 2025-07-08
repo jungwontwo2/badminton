@@ -2,6 +2,25 @@ import React, { useState, useEffect } from 'react';
 import api from './api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+// ⭐ [추가] 그래프의 툴팁을 원하는 모양으로 만들기 위한 커스텀 컴포넌트
+const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="custom-tooltip" style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                padding: '10px',
+                border: '1px solid #ccc',
+                borderRadius: '5px'
+            }}>
+                <p className="label">{`날짜 : ${label}`}</p>
+                <p className="intro">{`MMR : ${payload[0].value}`}</p>
+            </div>
+        );
+    }
+    return null;
+};
+
+
 function MyPage() {
     const [myData, setMyData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -50,7 +69,8 @@ function MyPage() {
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" />
                             <YAxis domain={['dataMin - 50', 'dataMax + 50']} />
-                            <Tooltip />
+                            {/* ⭐ [수정] 기본 툴팁 대신 우리가 만든 커스텀 툴팁을 사용합니다. */}
+                            <Tooltip content={<CustomTooltip />} />
                             <Legend />
                             <Line type="monotone" dataKey="mmr" stroke="#8884d8" activeDot={{ r: 8 }} />
                         </LineChart>
