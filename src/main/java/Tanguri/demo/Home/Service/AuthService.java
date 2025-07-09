@@ -4,8 +4,10 @@ import Tanguri.demo.Home.Domain.Role;
 import Tanguri.demo.Home.Domain.User;
 import Tanguri.demo.Home.Domain.UserStatus;
 import Tanguri.demo.Home.Repository.UserRepository;
+import Tanguri.demo.Home.Util.JwtUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -24,6 +26,7 @@ import org.springframework.web.client.RestTemplate;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
 
     @Value("${kakao.client-id}")
     private String clientId;
@@ -95,17 +98,15 @@ public class AuthService {
                 .build();
     }
 
+    //로그인/가입 시 두 종류의 토큰 모두 생성, Refresh Token을 DB에 저장
     @Transactional
     public User loginOrRegister(User kakaoUser){
-        //카카오 ID로 이미 가입된 사용자인지 확인
-        return userRepository.findByKakaoId(kakaoUser.getKakaoId())
-                .map(user -> {
-                    //이미 가입된 경우, 최신 프로필 정보로 업데이트
-                    user.updateProfile(kakaoUser.getNickname(), kakaoUser.getProfileImageUrl());
-                    return user;
+        User user = userRepository.findByKakaoId(kakaoUser.getKakaoId())
+                .map(existingUser -> {
+                    existingUser.updateProfile(kakaoUser.getNickname(), kakaoUser.getProfileImageUrl());
+                    return existingUser;
                 })
-                .orElseGet(()->{
-                    //새로 가입하는 경우, 기본값으로 저장
+                .orElseGet(() -> {
                     User newUser = User.builder()
                             .kakaoId(kakaoUser.getKakaoId())
                             .nickname(kakaoUser.getNickname())
@@ -113,9 +114,35 @@ public class AuthService {
                             .role(Role.USER)
                             .status(UserStatus.UNVERIFIED)
                             .build();
-                   return userRepository.save(newUser);
+                    return userRepository.save(newUser);
                 });
 
+        //Refresh Token 생성하고 DB에 저장
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+        user.updateRefreshToken(refreshToken);
+
+        return user;
     }
 
+    //Refresh Token으로 새로운 Access Token 발급
+    @Transactional
+    public String refreshAccessToken(String refreshToken){
+        //받은 Refresh Token이 유효한지, 타입이 'refresh'가 맞는지 확인
+        if(!jwtUtil.validateToken(refreshToken) || !jwtUtil.isRefreshToken(refreshToken)){
+            throw new IllegalArgumentException("유효하지 않은 Refresh Token입니다.");
+        }
+
+        //토큰에서 사용자 ID 추출
+        Long userId = jwtUtil.getUserIdFromToken(refreshToken);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        //DB에 저장된 Refresh Token과 사용자가 보낸 토큰이 일치하는지 확인
+        if(!user.getRefreshToken().equals(refreshToken)){
+            throw new IllegalArgumentException("Refresh Token이 일치하지 않습니다.");
+        }
+
+        // 모든 검증 통과하면 새로운 Access Token을 발급하여 반환.
+        return jwtUtil.generateAccessToken(user.getId(), user.getRole().name());
+    }
 }

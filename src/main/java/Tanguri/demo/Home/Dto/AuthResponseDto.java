@@ -5,11 +5,14 @@ import lombok.Getter;
 
 @Getter
 public class AuthResponseDto {
-    private String token;
+
+    private String accessToken;
+    private String refreshToken;
     private User user;
 
-    public AuthResponseDto(String token, User user) {
-        this.token = token;
+    public AuthResponseDto(String accessToken, String refreshToken, User user) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
         this.user = user;
     }
 }

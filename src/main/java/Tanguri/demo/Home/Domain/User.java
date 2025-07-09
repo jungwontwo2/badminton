@@ -45,6 +45,10 @@ public class User {
     private String gradeSi;  //시 급수
     private String gradeNational;//전국 급수
 
+    //Refresh Token을 저장할 필드
+    @Column(length = 500)
+    private String refreshToken;
+
     @Builder
     public User(Long kakaoId, String nickname, String profileImageUrl, Role role, UserStatus status) {
         this.kakaoId = kakaoId;
@@ -83,5 +87,10 @@ public class User {
 
     public void updateMmr(Integer newMmr){
         this.mmr = newMmr;
+    }
+
+    //Refresh Token 업데이트
+    public void updateRefreshToken(String refreshToken){
+        this.refreshToken = refreshToken;
     }
 }

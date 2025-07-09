@@ -15,19 +15,46 @@ import java.util.Date;
 public class JwtUtil {
 
     private final Key key;
+    private final long accessTokenExpirationTime;
+    private final long refreshTokenExpirationTime;
 
-    public JwtUtil(@Value("${jwt.secret.key}") String secretKey) {
+    //생성자에서 application.properties에 설정한 유효 시간 값들을 주입
+    public JwtUtil(@Value("${jwt.secret.key}") String secretKey,
+                   @Value("${jwt.access-token.expiration-time}") long accessTokenExpirationTime,
+                    @Value("${jwt.refresh-token.expiration-time}") long refreshTokenExpirationTime) {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes());
+        this.accessTokenExpirationTime = accessTokenExpirationTime;
+        this.refreshTokenExpirationTime = refreshTokenExpirationTime;
+    }
+
+    // Access Token(1시간) 생성
+    public String generateAccessToken(Long userId, String role){
+        return generateToken(userId, role, accessTokenExpirationTime,"access");
+    }
+
+    // Refresh Token(14일) 생성
+    public String generateRefreshToken(Long userId){
+        return generateToken(userId,null,refreshTokenExpirationTime,"refresh");
+    }
+
+    //토큰이 Refresh Token 타입인지 검증
+    public boolean isRefreshToken(String token){
+        return "refresh".equals(getClaims(token).get("type", String.class));
     }
 
     // JWT 생성
-    public String generateToken(Long userId, String role) {
+    public String generateToken(Long userId, String role,long expirationTime, String type) {
         long now = System.currentTimeMillis();
+        //Claims: 토큰에 담을 정보의 조각들
+        Claims claims = Jwts.claims().setSubject(userId.toString());
+        claims.put("type", type);
+        if(role != null){
+            claims.put("role", role);
+        }
         return Jwts.builder()
-                .setSubject(userId.toString())
-                .claim("role", role) // 역할 정보 추가
+                .setClaims(claims)
                 .setIssuedAt(new Date(now))
-                .setExpiration(new Date(now + 1000 * 60 * 60 * 24)) // 만료 시간: 24시간
+                .setExpiration(new Date(now + expirationTime)) // 만료 시간: 24시간
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }

@@ -17,13 +17,13 @@ function AuthRedirectHandler({ onLoginSuccess }) {
                 .then(response => {
                     console.log('로그인 성공:', response.data);
 
-                    // ⭐ [수정] : 응답 데이터에서 토큰과 사용자 정보를 분리
-                    const { token, user } = response.data;
+                    const { accessToken, refreshToken, user } = response.data;
 
-                    // ⭐ [수정] : 받은 토큰을 localStorage에 저장
-                    localStorage.setItem('jwtToken', token);
+                    // ⭐ [수정] 두 종류의 토큰을 각각 다른 이름으로 저장합니다.
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('refreshToken', refreshToken);
 
-                    onLoginSuccess(user); // App.jsx의 user 상태는 사용자 정보로 업데이트
+                    onLoginSuccess(user);
                     navigate('/');
                 })
                 .catch(error => {
