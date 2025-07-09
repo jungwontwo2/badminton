@@ -2,24 +2,24 @@ import React, { useState, useEffect } from 'react';
 import api from './api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// ⭐ [추가] 그래프의 툴팁을 원하는 모양으로 만들기 위한 커스텀 컴포넌트
+// 그래프의 툴팁을 원하는 모양으로 만들기 위한 커스텀 컴포넌트
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         return (
             <div className="custom-tooltip" style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
                 padding: '10px',
                 border: '1px solid #ccc',
-                borderRadius: '5px'
+                borderRadius: '5px',
+                boxShadow: '2px 2px 5px rgba(0,0,0,0.1)'
             }}>
                 <p className="label">{`날짜 : ${label}`}</p>
-                <p className="intro">{`MMR : ${payload[0].value}`}</p>
+                <p className="intro" style={{ color: '#8884d8' }}>{`MMR : ${payload[0].value}`}</p>
             </div>
         );
     }
     return null;
 };
-
 
 function MyPage() {
     const [myData, setMyData] = useState(null);
@@ -45,13 +45,15 @@ function MyPage() {
     if (error) return <div>에러 발생: {error.message}</div>;
     if (!myData) return <div>데이터가 없습니다.</div>;
 
+    // myData 객체에서 matchHistories와 mmrPoints를 추출합니다.
     const { matchHistories, mmrPoints } = myData;
 
+    // MMR 변동량을 시각적으로 표현하는 헬퍼 함수
     const renderMmrChange = (change) => {
         if (change > 0) {
-            return <span style={{ color: 'blue' }}>▲ {change}</span>;
+            return <span style={{ color: 'blue', fontWeight: 'bold' }}>▲ {change}</span>;
         } else if (change < 0) {
-            return <span style={{ color: 'red' }}>▼ {Math.abs(change)}</span>;
+            return <span style={{ color: 'red', fontWeight: 'bold' }}>▼ {Math.abs(change)}</span>;
         }
         return <span>-</span>;
     };
@@ -69,10 +71,9 @@ function MyPage() {
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" />
                             <YAxis domain={['dataMin - 50', 'dataMax + 50']} />
-                            {/* ⭐ [수정] 기본 툴팁 대신 우리가 만든 커스텀 툴팁을 사용합니다. */}
                             <Tooltip content={<CustomTooltip />} />
                             <Legend />
-                            <Line type="monotone" dataKey="mmr" stroke="#8884d8" activeDot={{ r: 8 }} />
+                            <Line type="monotone" dataKey="mmr" name="MMR" stroke="#8884d8" activeDot={{ r: 8 }} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -92,17 +93,24 @@ function MyPage() {
                         <th style={{ padding: '10px', border: '1px solid #ddd' }}>경기 날짜</th>
                     </tr>
                     </thead>
+                    {/* ⭐ [수정] 테이블의 내용(body)을 그리는 렌더링 로직 */}
                     <tbody>
-                    {matchHistories.map(match => (
-                        <tr key={match.matchId}>
-                            <td style={{ padding: '10px', border: '1px solid #ddd', fontWeight: 'bold', color: match.result === '승' ? 'blue' : 'red' }}>{match.result}</td>
-                            <td style={{ padding: '10px', border: '1px solid #ddd' }}>{match.myPartner}</td>
-                            <td style={{ padding: '10px', border: '1px solid #ddd' }}>{match.opponents}</td>
-                            <td style={{ padding: '10px', border: '1px solid #ddd' }}>{match.score}</td>
-                            <td style={{ padding: '10px', border: '1px solid #ddd' }}>{renderMmrChange(match.mmrChange)}</td>
-                            <td style={{ padding: '10px', border: '1px solid #ddd' }}>{new Date(match.matchDate).toLocaleDateString()}</td>
+                    {matchHistories.length > 0 ? (
+                        matchHistories.map(match => (
+                            <tr key={match.matchId}>
+                                <td style={{ padding: '10px', border: '1px solid #ddd', fontWeight: 'bold', color: match.result === '승' ? 'blue' : 'red' }}>{match.result}</td>
+                                <td style={{ padding: '10px', border: '1px solid #ddd' }}>{match.myPartner}</td>
+                                <td style={{ padding: '10px', border: '1px solid #ddd' }}>{match.opponents}</td>
+                                <td style={{ padding: '10px', border: '1px solid #ddd' }}>{match.score}</td>
+                                <td style={{ padding: '10px', border: '1px solid #ddd' }}>{renderMmrChange(match.mmrChange)}</td>
+                                <td style={{ padding: '10px', border: '1px solid #ddd' }}>{new Date(match.matchDate).toLocaleDateString()}</td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr>
+                            <td colSpan="6" style={{ padding: '20px' }}>경기 기록이 없습니다.</td>
                         </tr>
-                    ))}
+                    )}
                     </tbody>
                 </table>
             </section>

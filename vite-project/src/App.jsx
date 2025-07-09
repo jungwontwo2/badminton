@@ -1,14 +1,14 @@
-// src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route,Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import KakaoLogin from './KakaoLogin';
 import AuthRedirectHandler from './AuthRedirectHandler';
 import ProfileForm from './ProfileForm';
-import AdminPage from "./AdminPage.jsx";
+import AdminPage from './AdminPage';
 import MatchResultForm from './MatchResultForm';
-import RankingPage from "./RankingPage.jsx";
-import MyPage from "./MyPage.jsx";
-import api from "./api.js";
+import RankingPage from './RankingPage';
+import MyPage from './MyPage';
+import UserProfilePage from './UserProfilePage'; // ⭐ [추가] 새로 만든 UserProfilePage 컴포넌트 import
+import api from './api';
 
 function App() {
     const [user, setUser] = useState(null);
@@ -18,14 +18,13 @@ function App() {
         const checkLoginStatus = async () => {
             const token = localStorage.getItem('jwtToken');
             if (token) {
-                console.log("토큰 발견! 로그인 상태 복원 시도");
                 try {
-                    // ⭐ [수정] : 토큰으로 내 정보를 가져오는 API 호출
                     const response = await api.get('/api/users/me');
-                    setUser(response.data); // 성공 시 사용자 정보로 상태 업데이트
+                    setUser(response.data);
                 } catch (error) {
                     console.error("로그인 상태 복원 실패:", error);
-                    localStorage.removeItem('jwtToken'); // 유효하지 않은 토큰은 삭제
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
                 }
             }
             setLoading(false);
@@ -38,11 +37,11 @@ function App() {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('jwtToken')
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         setUser(null);
     };
 
-    // 프로필 정보가 업데이트되면 user 상태를 갱신하는 함수
     const handleProfileUpdate = (updatedUser) => {
         setUser(updatedUser);
     };
@@ -55,10 +54,8 @@ function App() {
         }
     };
 
-    // 로그인 여부 및 추가 정보 입력 여부에 따라 다른 내용을 보여줄 컴포넌트
     const MainContent = () => {
         if (!user) {
-            // 1. 로그인 안 한 경우
             return (
                 <div>
                     <p>카카오로 로그인하여 시작하세요.</p>
@@ -67,12 +64,10 @@ function App() {
             );
         }
 
-        // 2. 로그인은 했지만 추가 정보(club)가 없는 경우
         if (user && !user.club) {
             return <ProfileForm user={user} onProfileUpdate={handleProfileUpdate} />;
         }
 
-        // 3. 로그인도 했고 추가 정보도 있는 경우
         return (
             <div>
                 <h2>프로필 정보</h2>
@@ -90,19 +85,32 @@ function App() {
         );
     };
 
+    if(loading) {
+        return <div>앱 로딩 중...</div>;
+    }
+
     return (
         <BrowserRouter>
             <div style={{ padding: '20px', textAlign: 'center' }}>
-                <header style={{ marginBottom: '20px', paddingBottom: '10px', borderBottom: '1px solid #eee' }}>
-                    <h1 style={{ margin: 0 }}>배드민턴 MMR 시스템</h1>
+                <header style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '20px',
+                    paddingBottom: '10px',
+                    borderBottom: '1px solid #eee'
+                }}>
+                    <h1 style={{ margin: 0 }}>
+                        <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+                            배드민턴 MMR 시스템
+                        </Link>
+                    </h1>
                     <nav>
                         <Link to="/" style={{ marginRight: '20px' }}>메인</Link>
                         <Link to="/rankings" style={{ marginRight: '20px' }}>랭킹</Link>
-                        {/* ⭐ [추가] 로그인한 사용자에게 '내 정보' 링크를 보여줌 */}
                         {user && (
                             <Link to="/mypage" style={{ marginRight: '20px' }}>내 정보</Link>
                         )}
-                        {/* ⭐ [수정] : 로그인한 인증 유저에게 경기 결과 등록 링크를 보여줌 */}
                         {user && user.status === 'VERIFIED' && (
                             <Link to="/record-match" style={{ marginRight: '20px' }}>경기 결과 등록</Link>
                         )}
@@ -115,13 +123,12 @@ function App() {
                 <Routes>
                     <Route path="/" element={<MainContent />} />
                     <Route path="/auth/kakao/callback" element={<AuthRedirectHandler onLoginSuccess={handleLoginSuccess} />} />
-                    {/* ⭐ [추가] : /admin 경로에 AdminPage 컴포넌트를 연결 */}
                     <Route path="/admin" element={<AdminPage />} />
-                    {/* ⭐ [추가] : /record-match 경로에 MatchResultForm 컴포넌트를 연결 */}
                     <Route path="/record-match" element={<MatchResultForm />} />
                     <Route path="/rankings" element={<RankingPage />} />
-                    {/* ⭐ [추가] /mypage 경로에 MyPage 컴포넌트를 연결 */}
                     <Route path="/mypage" element={<MyPage />} />
+                    {/* ⭐ [추가] 다른 사용자의 프로필을 보여줄 동적 경로를 추가합니다. */}
+                    <Route path="/profiles/:userId" element={<UserProfilePage />} />
                 </Routes>
             </div>
         </BrowserRouter>

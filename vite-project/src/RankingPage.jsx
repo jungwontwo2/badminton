@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
+import { Link } from 'react-router-dom'; // ⭐ [추가] react-router-dom에서 Link를 import합니다.
 
 function RankingPage() {
     const [rankings, setRankings] = useState([]);
@@ -114,10 +115,12 @@ function RankingPage() {
                         <td style={{ ...tdStyle, textAlign: 'left', display: 'flex', alignItems: 'center' }}>
                             <img src={player.profileImageUrl} alt={player.nickname} style={{ width: '40px', height: '40px', borderRadius: '50%', marginRight: '15px' }} />
                             <div>
-                                <div>{player.nickname}</div>
-                                {/* ⭐ [수정] 모든 급수 정보를 명확하게 표시합니다. */}
+                                {/* ⭐ [수정] 닉네임을 Link 컴포넌트로 감싸서 클릭 가능하게 만듭니다. */}
+                                <Link to={`/profiles/${player.userId}`} style={{ textDecoration: 'none', color: 'inherit', fontWeight: 'bold' }}>
+                                    {player.nickname}
+                                </Link>
                                 <div style={{ fontSize: '0.8em', color: '#6c757d' }}>
-                                    {player.ageGroup} / 구:{player.gradeGu} / 시:{player.gradeSi} / 전국:{player.gradeNational || '-'}
+                                    {player.ageGroup} / 구:{player.gradeGu} / 시:{player.gradeSi} / 전:{player.gradeNational || '-'}
                                 </div>
                             </div>
                         </td>
