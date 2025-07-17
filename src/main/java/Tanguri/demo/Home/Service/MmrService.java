@@ -4,6 +4,7 @@ import Tanguri.demo.Home.Domain.MatchResult;
 import Tanguri.demo.Home.Domain.MatchStatus;
 import Tanguri.demo.Home.Domain.MmrChangeLog;
 import Tanguri.demo.Home.Domain.User;
+import Tanguri.demo.Home.Dto.AwaitingMatchDto;
 import Tanguri.demo.Home.Dto.MatchRequestDto;
 import Tanguri.demo.Home.Dto.PendingMatchDto;
 import Tanguri.demo.Home.Repository.MatchResultRepository;
@@ -28,19 +29,24 @@ public class MmrService {
 
     private static final int K_FACTOR = 32;
 
-    //사용자가 경기 결과 제출하면 MMR 업데이트를 바로 안하고 일단 '승인 대기' 상태로 저장
+    //경기 결과를 '상대방 확인 대기' 상태로 저장
     @Transactional
-    public void recordMatch(MatchRequestDto matchRequestDto){
+    public void recordMatch(MatchRequestDto matchRequestDto, User registeredBy){
         User winner1 = userRepository.findById(matchRequestDto.getWinner1Id()).orElseThrow(EntityNotFoundException::new);
         User loser1 = userRepository.findById(matchRequestDto.getLoser1Id()).orElseThrow(EntityNotFoundException::new);
-        User winner2 = userRepository.findById(matchRequestDto.getWinner2Id()).orElseThrow(EntityNotFoundException::new);
-        User loser2 = userRepository.findById(matchRequestDto.getLoser2Id()).orElseThrow(EntityNotFoundException::new);
+
+        //파트너의 ID가 null이 아닌 경우에만 DB에서 조회하도록 변경합니다.
+        User winner2 = (matchRequestDto.getWinner2Id() != null) ? userRepository.findById(matchRequestDto.getWinner2Id())
+                .orElseThrow(() -> new EntityNotFoundException("Winner2 not found")) : null;
+        User loser2 = (matchRequestDto.getLoser2Id() != null) ? userRepository.findById(matchRequestDto.getLoser2Id())
+                .orElseThrow(() -> new EntityNotFoundException("Loser2 not found")) : null;
 
         MatchResult matchResult = MatchResult.builder()
                 .winner1(winner1).winner2(winner2)
                 .loser1(loser1).loser2(loser2)
                 .winnerScore(matchRequestDto.getWinnerScore())
                 .loserScore(matchRequestDto.getLoserScore())
+                .registeredBy(registeredBy)
                 .build();
 
         matchResultRepository.save(matchResult);
@@ -50,7 +56,7 @@ public class MmrService {
     @Transactional(readOnly = true)
     public List<PendingMatchDto> getPendingMatches(){
         //승인대기 상태인 경기결과 가져오기
-        List<MatchResult> pendingMatches = matchResultRepository.findByStatus(MatchStatus.PENDING);
+        List<MatchResult> pendingMatches = matchResultRepository.findByStatus(MatchStatus.PENDING_ADMIN);
 
         // 해당 엔티티 리스트를 DTO 리스트로 변환하여 반환
         return pendingMatches.stream()
@@ -64,8 +70,8 @@ public class MmrService {
         MatchResult matchResult = matchResultRepository.findById(matchId)
                 .orElseThrow(() -> new EntityNotFoundException("Match Not Found with id: " + matchId));
 
-        if(matchResult.getStatus() != MatchStatus.PENDING){
-            throw new IllegalStateException("이미 처리된 경기입니다.");
+        if(matchResult.getStatus() != MatchStatus.PENDING_ADMIN){
+            throw new IllegalStateException("관리자 승인 대기 상태의 경기만 처리할 수 있습니다.");
         }
         //MMR 계산 없이 상태만 REJECTED로 변경
         matchResult.rejectMatch();
@@ -99,15 +105,59 @@ public class MmrService {
         mmrChangeLogRepository.save(log);
     }
 
+    //현재 로그인한 사용자가 상대팀으로서 확인해야 할 경기 목록 조회
+    @Transactional(readOnly = true)
+    public List<AwaitingMatchDto> getMatchesAwaitingConfirmation(User currentUser){
+        // repository에 추가한 메서드 호출
+        List<MatchResult> awaitingMatches = matchResultRepository.findMatchesAwaitingOpponentConfirmation(currentUser);
+
+        //조회한 엔티티 리스트를 프론트엔드가 사용하기 좋은 DTO 리스트로 변환
+        return awaitingMatches.stream()
+                .map(AwaitingMatchDto::new) //.map(match -> new AwaitingMatchDto(match))와 동일
+                .collect(Collectors.toList());
+    }
+
+
+    //상대방이 경기 결과를 '확인'
+    @Transactional
+    public void confirmMatchByOpponent(Long matchId, User opponent){
+        //확인할 경기 결과를 ID로 조회
+        MatchResult matchResult = matchResultRepository.findById(matchId)
+                .orElseThrow(() -> new EntityNotFoundException("Match notn found with id: " + matchId));
+
+        //'상대방 확인 대기' 상태인지 확인
+        if (matchResult.getStatus() != MatchStatus.AWAITING_OPPONENT) {
+            throw new IllegalStateException("상대방의 확인을 기다리는 경기가 아닙니다.");
+        }
+
+        // 요청을 보낸 사용자가 등록자가 아닌지 확인
+//        if (matchResult.getRegisteredBy().equals(opponent)) {
+//            throw new IllegalStateException("결과를 등록한 사용자는 확인할 수 없습니다.");
+//        }
+
+        //(추가 검사) 요청을 보낸 사용자가 해당 경기의 참여자인지 확인
+        boolean isParticipant = matchResult.getWinner1().equals(opponent) ||
+                (matchResult.getWinner2() != null && matchResult.getWinner2().equals(opponent)) ||
+                matchResult.getLoser1().equals(opponent) ||
+                (matchResult.getLoser2() != null && matchResult.getLoser2().equals(opponent));
+
+        if(!isParticipant){
+            throw new IllegalStateException("해당 경기의 참여자만 결과를 확인할 수 있습니다.");
+        }
+
+        //모든 검사 통과 시 상태를 '관리자 승인 대기'로 변경
+        matchResult.confirmByOpponent();
+    }
+
     //관리자가 승인대기 상태인 경기 결과를 승인해주는 메서드
     @Transactional
-    public void confirmMatchAndProcessMmr(Long matchId){
+    public void confirmMatchByAdminAndProcessMmr(Long matchId){
         //승인할 경기 결과 ID로 조회
         MatchResult matchResult = matchResultRepository.findById(matchId).orElseThrow(() -> new EntityNotFoundException("Match not found with id:" + matchId));
 
         //이미 처리된 경기인지 확인
-        if(matchResult.getStatus()!= MatchStatus.PENDING){
-            throw new IllegalStateException("이미 처리된 경기 결과입니다.");
+        if(matchResult.getStatus()!= MatchStatus.PENDING_ADMIN){
+            throw new IllegalStateException("관리자 승인 대기 상태의 경기만 처리할 수 있습니다.");
         }
 
         User winner1 = matchResult.getWinner1();
@@ -122,7 +172,7 @@ public class MmrService {
 
         //경기 결과 상태를 확정으로 변경하고 MMR 변동량 기록
         matchResult.setMmrChange(mmrChange);
-        matchResult.confirmMatch();
+        matchResult.confirmByAdmin();//관리자가 상태를 CONFIRMED로 변경
 
         //각 선수의 MMR 실제로 업데이트 후 로그 기록
         List<User> players = Arrays.asList(winner1, winner2, loser1, loser2);
@@ -133,5 +183,24 @@ public class MmrService {
             }
 
         }
+    }
+
+    //현재 로그인한 사용자가 상대팀으로서 확인해야 할 경기 목록 조회
+    @Transactional(readOnly = true)
+    public List<AwaitingMatchDto> getMatchesAwaitingMyConfirmation(User currentUser) {
+        List<MatchResult> awaitingMatches = matchResultRepository.findMatchesAwaitingOpponentConfirmation(currentUser);
+        return awaitingMatches.stream()
+                .map(AwaitingMatchDto::new)
+                .collect(Collectors.toList());
+    }
+
+
+    // 현재 로그인한 사용자가 등록했고 상대방의 확인을 기다리는 경기 목록을 조회.
+    @Transactional(readOnly = true)
+    public List<AwaitingMatchDto> getMatchesIRegisteredAndAwaiting(User currentUser){
+        List<MatchResult> awaitingMatches = matchResultRepository.findByRegisteredByAndStatus(currentUser, MatchStatus.AWAITING_OPPONENT);
+        return awaitingMatches.stream()
+                .map(AwaitingMatchDto::new)
+                .collect(Collectors.toList());
     }
 }

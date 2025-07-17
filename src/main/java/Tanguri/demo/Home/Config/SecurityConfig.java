@@ -41,6 +41,8 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll() // '/auth/**' 경로는 누구나 접근 가능
                         .requestMatchers("/api/rankings").permitAll()//랭킹쪽은 누구자 접근 가능
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/matches/**").hasAnyRole("USER","ADMIN")
+                        .requestMatchers("/api/mypage/**").hasAnyRole("USER","ADMIN")
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )
                 // 직접 만든 JWT 필터를 Spring Security 필터 체인에 추가
@@ -56,7 +58,7 @@ public class SecurityConfig {
         //허용할 출처(프론트 주소) 설정
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
         //허용할 HTTP 메서드
-        configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         //허용할 HTTP 헤더
         configuration.setAllowedHeaders(Arrays.asList("*"));
         //쿠키/인증 정보를 함께 보낼 수 있도록 허용

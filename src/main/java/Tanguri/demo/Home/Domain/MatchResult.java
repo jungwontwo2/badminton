@@ -45,22 +45,32 @@ public class MatchResult {
 
     //경기 결과 상태를 저장하는 필드
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private MatchStatus status;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "registered_by_id")
+    private User registeredBy;
+
     @Builder
-    public MatchResult(User winner1, User winner2, User loser1, User loser2, Integer winnerScore, Integer loserScore, Integer mmrChange) {
+    public MatchResult(User winner1, User winner2, User loser1, User loser2, Integer winnerScore, Integer loserScore, User registeredBy) {
         this.winner1 = winner1;
         this.winner2 = winner2;
         this.loser1 = loser1;
         this.loser2 = loser2;
         this.winnerScore = winnerScore;
         this.loserScore = loserScore;
-        this.mmrChange = mmrChange;
-        this.status = MatchStatus.PENDING;  // 처음 생성될 때 기본 상태를 '승인 대기'로 설정
+        this.registeredBy = registeredBy;
+        this.status = MatchStatus.AWAITING_OPPONENT;  // 처음 생성될 때 기본 상태를 '상대방 확인 대기'로 설정
     }
 
-    //관리자가 경기 결과를 승인
-    public void confirmMatch(){
+    //상대방이 경기 결과를 확인
+    public void confirmByOpponent(){
+        this.status = MatchStatus.PENDING_ADMIN;
+    }
+
+    //관리자가 경기 결과 승인
+    public void confirmByAdmin(){
         this.status = MatchStatus.CONFIRMED;
     }
 

@@ -50,7 +50,7 @@ public class AdminController {
     //특정 경기 결과를 '승인' 처리하는 API
     @PatchMapping("/matches/{matchId}/confirm")
     public ResponseEntity<String> confirmMatch(@PathVariable Long matchId){
-        mmrService.confirmMatchAndProcessMmr(matchId);
+        mmrService.confirmMatchByAdminAndProcessMmr(matchId);
         return ResponseEntity.ok("경기가 성공적으로 승인 처리되었습니다.");
     }
 
