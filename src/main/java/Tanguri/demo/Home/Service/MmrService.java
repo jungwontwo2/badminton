@@ -131,9 +131,9 @@ public class MmrService {
         }
 
         // 요청을 보낸 사용자가 등록자가 아닌지 확인
-//        if (matchResult.getRegisteredBy().equals(opponent)) {
-//            throw new IllegalStateException("결과를 등록한 사용자는 확인할 수 없습니다.");
-//        }
+        if (matchResult.getRegisteredBy().equals(opponent)) {
+            throw new IllegalStateException("결과를 등록한 사용자는 확인할 수 없습니다.");
+        }
 
         //(추가 검사) 요청을 보낸 사용자가 해당 경기의 참여자인지 확인
         boolean isParticipant = matchResult.getWinner1().equals(opponent) ||

@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// ✅ [수정] API 요청의 기본 주소를 8081 포트로 변경합니다.
+// API 요청을 중앙에서 관리하고, 토큰 갱신 및 캐시 문제를 처리할 axios 인스턴스
 const api = axios.create({
     baseURL: 'http://localhost:8081',
 });
 
-// 1. 요청 인터셉터: 모든 요청에 토큰과 캐시 방지 헤더를 자동으로 추가합니다.
+// 요청 인터셉터: 모든 요청에 토큰과 캐시 방지 헤더를 자동으로 추가
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('accessToken');
@@ -22,22 +22,18 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// 2. 응답 인터셉터: API 응답이 401 에러일 때, 자동으로 토큰을 갱신하고 다시 요청합니다.
+// 응답 인터셉터: 401 에러 시 자동으로 토큰을 갱신하고 다시 요청
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
-
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
             try {
                 const refreshToken = localStorage.getItem('refreshToken');
-                // ✅ [수정] 토큰 갱신 요청 주소도 8081 포트로 변경합니다.
                 const res = await axios.post('http://localhost:8081/auth/refresh', { refreshToken });
                 const newAccessToken = res.data.accessToken;
-
                 localStorage.setItem('accessToken', newAccessToken);
-
                 originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
                 return api(originalRequest);
             } catch (refreshError) {
@@ -71,20 +67,18 @@ const CustomTooltip = ({ active, payload, label }) => {
 function MyPage() {
     const [myData, setMyData] = useState(null);
     const [awaitingMyConf, setAwaitingMyConf] = useState([]);
-    const [awaitingOpponentConf, setAwaitingOpponentConf] = useState([]);
+    // ✅ [제거] 테스트용 상태를 제거합니다.
+    // const [awaitingOpponentConf, setAwaitingOpponentConf] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // ✅ [수정] 이제 '내가 확인할 경기' 목록만 불러옵니다.
     const fetchListsData = async () => {
         try {
-            const [awaitingMyConfResponse, awaitingOpponentConfResponse] = await Promise.all([
-                api.get('/api/matches/awaiting-my-confirmation'),
-                api.get('/api/matches/awaiting-opponent-confirmation')
-            ]);
-            setAwaitingMyConf(Array.isArray(awaitingMyConfResponse.data) ? awaitingMyConfResponse.data : []);
-            setAwaitingOpponentConf(Array.isArray(awaitingOpponentConfResponse.data) ? awaitingOpponentConfResponse.data : []);
+            const response = await api.get('/api/matches/awaiting-my-confirmation');
+            setAwaitingMyConf(Array.isArray(response.data) ? response.data : []);
         } catch (err) {
-            console.error("목록 데이터 로딩 실패:", err);
+            console.error("확인할 경기 목록 로딩 실패:", err);
         }
     };
 
@@ -110,6 +104,7 @@ function MyPage() {
         try {
             await api.patch(`/api/matches/${matchId}/confirm-by-opponent`);
             alert("경기 결과가 확인되었습니다. 관리자 승인을 기다립니다.");
+            // 확인 성공 후, 목록을 다시 불러와 화면을 갱신합니다.
             await fetchListsData();
         } catch (err) {
             console.error("경기 확인 처리 실패:", err);
@@ -162,31 +157,7 @@ function MyPage() {
                 )}
             </section>
 
-            <section style={{ marginTop: '20px', padding: '20px', border: '1px dashed #dc3545', borderRadius: '8px' }}>
-                <h3>내가 등록한 경기 (상대방 확인 대기중 - 테스트용)</h3>
-                {awaitingOpponentConf.length === 0 ? <p>상대방의 확인을 기다리는 경기가 없습니다.</p> : (
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-                            <thead>
-                            <tr>
-                                <th>등록자</th><th>경기</th><th>스코어</th><th>날짜</th><th>처리</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {awaitingOpponentConf.map(match => (
-                                <tr key={match.matchId}>
-                                    <td>{match.registeredByName}</td>
-                                    <td>{match.winnerTeam} vs {match.loserTeam}</td>
-                                    <td>{match.score}</td>
-                                    <td>{new Date(match.matchDate).toLocaleDateString()}</td>
-                                    <td><button onClick={() => handleConfirmMatch(match.matchId)}>상대방인 척 확인 (테스트)</button></td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </section>
+            {/* ✅ [제거] 테스트용 섹션을 완전히 제거했습니다. */}
 
             <section style={{ marginBottom: '40px' }}>
                 <h3>MMR 변동 그래프</h3>
