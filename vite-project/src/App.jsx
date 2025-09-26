@@ -1,10 +1,9 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
-import { BrowserRouter, Routes, Route, Link, Outlet } from 'react-router-dom';
+import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
+import { BrowserRouter, Routes, Route, Link, Outlet, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
 // 페이지 컴포넌트들을 import 합니다.
 import KakaoLogin from './KakaoLogin';
-import AuthRedirectHandler from './AuthRedirectHandler';
 import ProfileForm from './ProfileForm';
 import AdminPage from './AdminPage';
 import MatchResultForm from './MatchResultForm';
@@ -70,6 +69,7 @@ function App() {
         <AuthProvider>
             <BrowserRouter>
                 <Routes>
+                    {/* ✅ [수정] AuthRedirectHandler를 AuthRedirectPage로 변경하고, Layout 안에 모든 페이지를配置합니다. */}
                     <Route path="/" element={<Layout />}>
                         <Route index element={<MainContent />} />
                         <Route path="admin" element={<AdminPage />} />
@@ -78,7 +78,7 @@ function App() {
                         <Route path="mypage" element={<MyPage />} />
                         <Route path="profiles/:userId" element={<UserProfilePage />} />
                     </Route>
-                    <Route path="/auth/kakao/callback" element={<AuthRedirectHandler />} />
+                    <Route path="/auth/kakao/callback" element={<AuthRedirectPage />} />
                 </Routes>
             </BrowserRouter>
         </AuthProvider>
@@ -92,11 +92,12 @@ function AuthProvider({ children }) {
     const [isInitializing, setIsInitializing] = useState(true);
 
     useEffect(() => {
+        // 앱이 처음 시작될 때 출입 기록부(localStorage)를 확인하는 '인수인계' 절차
         const checkLoginStatus = async () => {
-            const token = localStorage.getItem('accessToken');
-            if (token) {
+            const accessToken = localStorage.getItem('accessToken');
+            if (accessToken) {
                 try {
-                    // 백엔드에 토큰이 유효한지 확인하고 사용자 정보를 받아오는 API
+                    api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
                     const response = await api.get('/api/users/me');
                     setUser(response.data);
                     setIsLoggedIn(true);
@@ -104,8 +105,6 @@ function AuthProvider({ children }) {
                     console.error("로그인 상태 복원 실패:", error);
                     localStorage.removeItem('accessToken');
                     localStorage.removeItem('refreshToken');
-                    setUser(null);
-                    setIsLoggedIn(false);
                 }
             }
             setIsInitializing(false);
@@ -113,13 +112,25 @@ function AuthProvider({ children }) {
         checkLoginStatus();
     }, []);
 
-    const authContextValue = {
-        user,
-        setUser,
-        isLoggedIn,
-        setIsLoggedIn,
-        api // api 인스턴스도 context를 통해 전달하여 다른 컴포넌트에서 사용할 수 있게 합니다.
+    // ✅ [추가] 로그인 방송 기능
+    const login = (userData, tokens) => {
+        localStorage.setItem('accessToken', tokens.accessToken);
+        localStorage.setItem('refreshToken', tokens.refreshToken);
+        api.defaults.headers.common['Authorization'] = `Bearer ${tokens.accessToken}`;
+        setUser(userData);
+        setIsLoggedIn(true);
     };
+
+    // ✅ [추가] 로그아웃 방송 기능
+    const logout = () => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        delete api.defaults.headers.common['Authorization'];
+        setUser(null);
+        setIsLoggedIn(false);
+    };
+
+    const authContextValue = { user, isLoggedIn, login, logout, isInitializing, setUser };
 
     if (isInitializing) {
         return <div>앱 로딩 중...</div>;
@@ -132,29 +143,23 @@ function AuthProvider({ children }) {
     );
 }
 
+export const useAuth = () => {
+    return useContext(AuthContext);
+};
 // ✅ [4단계] 헤더와 페이지 컨텐츠를 포함하는 레이아웃 컴포넌트
 function Layout() {
     return (
         <div style={{ padding: '20px', textAlign: 'center' }}>
             <Header />
             <main>
-                <Outlet /> {/* 라우팅되는 페이지 컴포넌트가 여기에 렌더링됩니다. */}
+                <Outlet />
             </main>
         </div>
     );
 }
 
 function Header() {
-    const { isLoggedIn, user, setUser, setIsLoggedIn } = useContext(AuthContext);
-
-    const handleLogout = () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        setUser(null);
-        setIsLoggedIn(false);
-        // 필요하다면 메인 페이지로 이동
-        // navigate('/');
-    };
+    const { isLoggedIn, user, logout } = useAuth(); // ✅ [수정] Context에서 logout 함수를 직접 가져옵니다.
 
     return (
         <header style={{
@@ -182,7 +187,7 @@ function Header() {
                         {user?.role === 'ADMIN' && (
                             <Link to="/admin" style={{ marginRight: '20px' }}>관리자 페이지</Link>
                         )}
-                        <button onClick={handleLogout}>로그아웃</button>
+                        <button onClick={logout}>로그아웃</button>
                     </>
                 )}
             </nav>
@@ -232,6 +237,39 @@ function MainContent() {
             <p><strong>인증 상태:</strong> {user.status === 'VERIFIED' ? '✅ 인증됨' : '❌ 미인증'}</p>
         </div>
     );
+}
+
+function AuthRedirectPage() {
+    const { login } = useAuth(); // 중앙 방송국의 login 함수를 직접 사용
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const effectRan = useRef(false);
+
+    useEffect(() => {
+        if (effectRan.current === true || process.env.NODE_ENV === 'development' && effectRan.current) return;
+
+        const code = searchParams.get('code');
+        if (code) {
+            // 여기서는 중앙 api 인스턴스 대신 일반 axios를 사용해도 괜찮습니다.
+            // 아직 토큰이 없는 상태이기 때문입니다.
+            axios.get(`http://localhost:8081/auth/kakao/callback?code=${code}`)
+                .then(response => {
+                    const { accessToken, refreshToken, user } = response.data;
+                    // ✅ [수정] 중앙 방송 시스템에 로그인 방송을 요청합니다!
+                    login(user, { accessToken, refreshToken });
+                    navigate('/'); // 방송 후 페이지 이동
+                })
+                .catch(error => {
+                    console.error('로그인 처리 실패:', error);
+                    alert('로그인에 실패했습니다. 다시 시도해주세요.');
+                    navigate('/');
+                });
+        }
+
+        return () => { effectRan.current = true; };
+    }, [searchParams, navigate, login]);
+
+    return <div>로그인 처리 중...</div>;
 }
 
 export default App;
