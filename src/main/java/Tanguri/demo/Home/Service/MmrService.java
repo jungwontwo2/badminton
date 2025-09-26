@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,15 +32,35 @@ public class MmrService {
 
     //경기 결과를 '상대방 확인 대기' 상태로 저장
     @Transactional
-    public void recordMatch(MatchRequestDto matchRequestDto, User registeredBy){
-        User winner1 = userRepository.findById(matchRequestDto.getWinner1Id()).orElseThrow(EntityNotFoundException::new);
-        User loser1 = userRepository.findById(matchRequestDto.getLoser1Id()).orElseThrow(EntityNotFoundException::new);
+    public void recordMatch(MatchRequestDto matchRequestDto, User registeredBy) {
+        User winner1 = userRepository.findById(matchRequestDto.getWinner1Id()).orElseThrow(() -> new EntityNotFoundException("Winner1 not found"));
+        User loser1 = userRepository.findById(matchRequestDto.getLoser1Id()).orElseThrow(() -> new EntityNotFoundException("Loser1 not found"));
 
-        //파트너의 ID가 null이 아닌 경우에만 DB에서 조회하도록 변경합니다.
         User winner2 = (matchRequestDto.getWinner2Id() != null) ? userRepository.findById(matchRequestDto.getWinner2Id())
                 .orElseThrow(() -> new EntityNotFoundException("Winner2 not found")) : null;
         User loser2 = (matchRequestDto.getLoser2Id() != null) ? userRepository.findById(matchRequestDto.getLoser2Id())
                 .orElseThrow(() -> new EntityNotFoundException("Loser2 not found")) : null;
+
+        // ✅ [추가] 중복된 선수가 있는지 서버에서 최종 검증합니다.
+        List<User> players = new ArrayList<>();
+        players.add(winner1);
+        players.add(loser1);
+        if (winner2 != null) players.add(winner2);
+        if (loser2 != null) players.add(loser2);
+
+        long distinctPlayerCount = players.stream().distinct().count();
+        if (players.size() != distinctPlayerCount) {
+            throw new IllegalStateException("한 경기에 동일한 선수를 중복해서 등록할 수 없습니다.");
+        }
+
+
+        // 등록자가 경기의 참여자인지 확인하는 보안 검증 로직
+        List<User> participants = Arrays.asList(winner1, winner2, loser1, loser2);
+        boolean isParticipant = participants.contains(registeredBy);
+
+        if (!isParticipant) {
+            throw new IllegalStateException("경기 결과를 등록하는 사용자는 반드시 경기의 참여자여야 합니다.");
+        }
 
         MatchResult matchResult = MatchResult.builder()
                 .winner1(winner1).winner2(winner2)
