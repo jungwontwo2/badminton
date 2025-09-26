@@ -38,6 +38,7 @@ public class SecurityConfig {
                 // HTTP 요청에 대한 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/test/**").permitAll() // '/auth/**' 경로는 누구나 접근 가능
                         .requestMatchers("/auth/**").permitAll() // '/auth/**' 경로는 누구나 접근 가능
                         .requestMatchers("/api/rankings").permitAll()//랭킹쪽은 누구자 접근 가능
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
