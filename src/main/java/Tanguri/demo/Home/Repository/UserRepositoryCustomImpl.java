@@ -4,6 +4,7 @@ import Tanguri.demo.Home.Domain.User;
 import Tanguri.demo.Home.Domain.UserStatus;
 import Tanguri.demo.Home.Dto.RankingDto;
 import Tanguri.demo.Home.Dto.SearchCond;
+import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -58,5 +59,27 @@ public class UserRepositoryCustomImpl implements UserRepositoryCustom {
                 .or(user.gradeNational.containsIgnoreCase(grade));
     }
 
+    @Override
+    public List<User> searchByCriteria(String nickname, String club){
+
+        // ✅ [핵심] 닉네임과 클럽 검색어가 모두 비어있을 경우,
+        // 가장 최근에 가입한 사용자 20명을 기본값으로 반환합니다.
+        if ((nickname == null || nickname.trim().isEmpty()) && (club == null || club.trim().isEmpty())) {
+            return queryFactory
+                    .selectFrom(user)
+                    .orderBy(user.createdAt.desc())
+                    .limit(20)
+                    .fetch();
+        }
+
+        return queryFactory
+                .selectFrom(user)
+                .where(
+                        nicknameContains(nickname),
+                        clubContains(club)
+                )
+                .limit(20)
+                .fetch();
+    }
 
 }

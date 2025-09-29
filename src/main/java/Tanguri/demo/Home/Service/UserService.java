@@ -6,6 +6,7 @@ import Tanguri.demo.Home.Domain.UserStatus;
 import Tanguri.demo.Home.Dto.ProfileUpdateDto;
 import Tanguri.demo.Home.Dto.RankingDto;
 import Tanguri.demo.Home.Dto.SearchCond;
+import Tanguri.demo.Home.Dto.UserSearchDto;
 import Tanguri.demo.Home.Repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -83,6 +84,13 @@ public class UserService {
 
         return users.stream()
                 .map(RankingDto::new)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserSearchDto> searchUsersByCriteria(String nickname, String club) {
+        return userRepository.searchByCriteria(nickname,club).stream()
+                .map(UserSearchDto::new)
                 .collect(Collectors.toList());
     }
 }

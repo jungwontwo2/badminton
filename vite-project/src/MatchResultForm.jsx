@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from './api'; // 중앙에서 관리되는 axios 인스턴스
+import PlayerSearchModal from "./PlayerSearchModal.jsx";
+
+// ✅ [추가] 선택된 선수를 표시하는 컴포넌트
+const PlayerDisplay = ({ player, onButtonClick, placeholder }) => (
+    <div onClick={onButtonClick} style={{
+        padding: '12px', border: '1px solid #cbd5e0', borderRadius: '6px',
+        cursor: 'pointer', backgroundColor: player ? '#edf2f7' : '#fff',
+        textAlign: 'center'
+    }}>
+        {player ? `${player.nickname} (${player.club})` : placeholder}
+    </div>
+);
 
 function MatchResultForm() {
     // ✅ [1. 상태 선언]
@@ -13,55 +25,61 @@ function MatchResultForm() {
     const [isSubmitting, setIsSubmitting] = useState(false); // 로딩 상태 추가
     const navigate = useNavigate();
 
-    // ✅ [2. 부수 효과]
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const response = await api.get('/api/users');
-                setUsers(response.data);
-            } catch (error) {
-                console.error("사용자 목록을 불러오는 데 실패했습니다.", error);
-            }
-        };
-        fetchUsers();
-    }, []);
+    // ✅ [추가] 팝업창 상태 관리
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [currentPlayerSlot, setCurrentPlayerSlot] = useState(null); // { team: 'winners', index: 0 }
 
-    // ✅ [3. 이벤트 핸들러]
-    const handlePlayerChange = (team, index, value) => {
-        const userId = value ? parseInt(value, 10) : null;
-        if (team === 'winners') {
-            const newWinners = [...winners];
-            newWinners[index] = userId;
-            setWinners(newWinners);
-        } else {
-            const newLosers = [...losers];
-            newLosers[index] = userId;
-            setLosers(newLosers);
+    const openModal = (team, index) => {
+        setCurrentPlayerSlot({ team, index });
+        setIsModalOpen(true);
+    };
+
+    const handlePlayerSelect = (user) => {
+        if (currentPlayerSlot) {
+            const { team, index } = currentPlayerSlot;
+            if (team === 'winners') {
+                const newWinners = [...winners];
+                newWinners[index] = user;
+                setWinners(newWinners);
+            } else {
+                const newLosers = [...losers];
+                newLosers[index] = user;
+                setLosers(newLosers);
+            }
         }
+        setIsModalOpen(false);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsSubmitting(true); // 제출 시작 시 로딩 상태로 변경
 
-        const playersInGame = isDoubles
-            ? [winners[0], winners[1], losers[0], losers[1]]
-            : [winners[0], losers[0]];
-
-        const validPlayers = playersInGame.filter(p => p !== null);
-        const uniquePlayers = new Set(validPlayers);
-
-        if (validPlayers.length !== uniquePlayers.size) {
-            alert('한 경기에 동일한 선수를 중복해서 선택할 수 없습니다.');
-            setIsSubmitting(false); // 로딩 상태 해제
+        // 모든 선수 슬롯이 채워졌는지 확인
+        const requiredPlayers = isDoubles ? 4 : 2;
+        const selectedPlayers = [...winners, ...losers].filter(p => p !== null);
+        if (isDoubles && selectedPlayers.length < 4) {
+            alert('복식 경기는 4명의 선수를 모두 선택해야 합니다.');
+            return;
+        }
+        if(!isDoubles && selectedPlayers.length < 2) {
+            alert('단식 경기는 2명의 선수를 모두 선택해야 합니다.');
             return;
         }
 
+
+        // 중복 선수 확인
+        const selectedPlayerIds = selectedPlayers.map(p => p.id);
+        if (new Set(selectedPlayerIds).size !== selectedPlayerIds.length) {
+            alert('한 경기에 동일한 선수를 중복해서 등록할 수 없습니다.');
+            return;
+        }
+
+        setIsSubmitting(true);
+
         const matchData = {
-            winner1Id: winners[0],
-            winner2Id: isDoubles ? winners[1] : null,
-            loser1Id: losers[0],
-            loser2Id: isDoubles ? losers[1] : null,
+            winner1Id: winners[0]?.id,
+            winner2Id: isDoubles ? winners[1]?.id : null,
+            loser1Id: losers[0]?.id,
+            loser2Id: isDoubles ? losers[1]?.id : null,
             winnerScore: parseInt(winnerScore, 10),
             loserScore: parseInt(loserScore, 10),
         };
@@ -71,29 +89,16 @@ function MatchResultForm() {
             alert('경기 결과가 성공적으로 등록되었습니다. 상대방의 확인을 기다립니다.');
             navigate('/mypage');
         } catch (err) {
-            if (err.response?.data?.message) {
-                alert(err.response.data.message);
-            } else {
-                alert('경기 결과 등록에 실패했습니다.');
-                console.error(err);
-            }
+            alert(err.response?.data?.message || '경기 결과 등록에 실패했습니다.');
+            console.error(err);
         } finally {
-            setIsSubmitting(false); // 성공/실패 여부와 관계없이 로딩 상태 해제
+            setIsSubmitting(false);
         }
     };
 
-    // ✅ [4. 렌더링 준비]
-    const selectedPlayerIds = new Set([
-        ...winners.filter(id => id !== null),
-        ...losers.filter(id => id !== null)
-    ]);
-
-    const renderPlayerOptions = (currentValue) => {
-        return users.map(user => {
-            const isDisabled = selectedPlayerIds.has(user.id) && user.id !== currentValue;
-            return <option key={user.id} value={user.id} disabled={isDisabled}>{user.nickname}</option>;
-        });
-    };
+    const selectedPlayerIds = new Set(
+        [...winners, ...losers].filter(p => p).map(p => p.id)
+    );
 
     // ✅ [5. 화면 렌더링] - 스타일이 적용된 JSX
     // 스타일 객체들을 정의하여 가독성을 높입니다.
@@ -146,9 +151,8 @@ function MatchResultForm() {
             fontWeight: '600',
             fontSize: '1.1rem'
         },
-        playerSelectGroup: {
-            display: 'grid',
-            gridTemplateColumns: isDoubles ? '1fr 1fr 0.5fr' : '1fr 0.5fr',
+        playerSelectGroup: { display: 'grid',
+            gridTemplateColumns: isDoubles ? '1fr 1fr 80px' : '1fr 80px',
             gap: '15px',
             alignItems: 'center'
         },
@@ -157,12 +161,12 @@ function MatchResultForm() {
             padding: '12px',
             border: '1px solid #cbd5e0',
             borderRadius: '6px',
-            fontSize: '1rem',
+            fontSize: '1rsem',
             backgroundColor: '#fff'
         },
         input: {
             width: '100%',
-            padding: '12px',
+            padding: '15px',
             border: '1px solid #cbd5e0',
             borderRadius: '6px',
             fontSize: '1rem',
@@ -183,29 +187,33 @@ function MatchResultForm() {
 
     return (
         <div style={styles.container}>
+            {isModalOpen && (
+                <PlayerSearchModal
+                    onSelect={handlePlayerSelect}
+                    onClose={() => setIsModalOpen(false)}
+                    selectedPlayerIds={selectedPlayerIds}
+                />
+            )}
+
             <h2 style={styles.title}>경기 결과 등록 🏸</h2>
             <form onSubmit={handleSubmit} style={styles.form}>
                 <div style={styles.radioGroup}>
-                    <label style={{...styles.radioLabel, backgroundColor: !isDoubles ? '#edf2f7' : '#f7fafc', color: !isDoubles ? '#2c5282' : '#4a5568'}}>
-                        <input style={styles.radioInput} type="radio" name="gameType" checked={!isDoubles} onChange={() => setIsDoubles(false)} /> 단식
+                    <label style={{ ...styles.radioLabel, ...(isDoubles ? {} : { backgroundColor: '#2c5282', color: 'white', borderColor: '#2c5282' }) }}>
+                        <input style={styles.radioInput} type="radio" name="matchType" checked={!isDoubles} onChange={() => setIsDoubles(false)} />
+                        단식
                     </label>
-                    <label style={{...styles.radioLabel, backgroundColor: isDoubles ? '#edf2f7' : '#f7fafc', color: isDoubles ? '#2c5282' : '#4a5568'}}>
-                        <input style={styles.radioInput} type="radio" name="gameType" checked={isDoubles} onChange={() => setIsDoubles(true)} /> 복식
+                    <label style={{ ...styles.radioLabel, ...(isDoubles ? { backgroundColor: '#2c5282', color: 'white', borderColor: '#2c5282' } : {}) }}>
+                        <input style={styles.radioInput} type="radio" name="matchType" checked={isDoubles} onChange={() => setIsDoubles(true)} />
+                        복식
                     </label>
                 </div>
 
                 <fieldset style={{...styles.fieldset, borderColor: '#38a169'}}>
                     <legend style={{...styles.legend, color: '#38a169'}}>🏆 승리팀</legend>
                     <div style={styles.playerSelectGroup}>
-                        <select style={styles.select} value={winners[0] || ''} onChange={(e) => handlePlayerChange('winners', 0, e.target.value)} required>
-                            <option value="">승자 1 선택</option>
-                            {renderPlayerOptions(winners[0])}
-                        </select>
+                        <PlayerDisplay player={winners[0]} onButtonClick={() => openModal('winners', 0)} placeholder="승자 1 선택" />
                         {isDoubles && (
-                            <select style={styles.select} value={winners[1] || ''} onChange={(e) => handlePlayerChange('winners', 1, e.target.value)} required>
-                                <option value="">승자 2 선택</option>
-                                {renderPlayerOptions(winners[1])}
-                            </select>
+                            <PlayerDisplay player={winners[1]} onButtonClick={() => openModal('winners', 1)} placeholder="승자 2 선택" />
                         )}
                         <input style={styles.input} type="number" value={winnerScore} onChange={(e) => setWinnerScore(e.target.value)} required />
                     </div>
@@ -214,15 +222,9 @@ function MatchResultForm() {
                 <fieldset style={{...styles.fieldset, borderColor: '#e53e3e'}}>
                     <legend style={{...styles.legend, color: '#e53e3e'}}>💔 패배팀</legend>
                     <div style={styles.playerSelectGroup}>
-                        <select style={styles.select} value={losers[0] || ''} onChange={(e) => handlePlayerChange('losers', 0, e.target.value)} required>
-                            <option value="">패자 1 선택</option>
-                            {renderPlayerOptions(losers[0])}
-                        </select>
+                        <PlayerDisplay player={losers[0]} onButtonClick={() => openModal('losers', 0)} placeholder="패자 1 선택" />
                         {isDoubles && (
-                            <select style={styles.select} value={losers[1] || ''} onChange={(e) => handlePlayerChange('losers', 1, e.target.value)} required>
-                                <option value="">패자 2 선택</option>
-                                {renderPlayerOptions(losers[1])}
-                            </select>
+                            <PlayerDisplay player={losers[1]} onButtonClick={() => openModal('losers', 1)} placeholder="패자 2 선택" />
                         )}
                         <input style={styles.input} type="number" value={loserScore} onChange={(e) => setLoserScore(e.target.value)} required />
                     </div>

@@ -3,10 +3,12 @@ package Tanguri.demo.Home.Controller;
 
 import Tanguri.demo.Home.Domain.User;
 import Tanguri.demo.Home.Dto.ProfileUpdateDto;
+import Tanguri.demo.Home.Dto.UserSearchDto;
 import Tanguri.demo.Home.Service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,4 +40,14 @@ public class UserController {
         List<User> users = userService.getVerifiedUsers();
         return ResponseEntity.ok(users);
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<UserSearchDto>> searchUsers(
+            @RequestParam(value = "nickname",required = false) String nickname,
+            @RequestParam(value = "club",required = false) String club){
+        List<UserSearchDto> users = userService.searchUsersByCriteria(nickname, club);
+        return ResponseEntity.ok(users);
+    }
+
+
 }

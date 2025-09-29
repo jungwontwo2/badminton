@@ -3,6 +3,8 @@ package Tanguri.demo.Home.Repository;
 import Tanguri.demo.Home.Domain.User;
 import Tanguri.demo.Home.Domain.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,4 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long>, UserRepositor
 
     //인증된 사용자들 중 닉네임에 특정 문자열 포함하는 사용자를 MMR 점수 높은 순으로 정렬(검색하는데 필요한 메서드)
     List<User> findByStatusAndNicknameContainingIgnoreCaseOrderByMmrDesc(UserStatus status, String nickname);
+
+    @Query("SELECT u FROM User u WHERE u.nickname LIKE %:query% OR u.club LIKE %:query% OR u.gradeGu LIKE %:query% OR u.gradeSi LIKE %:query% OR u.gradeNational LIKE %:query%")
+    List<User> findByQuery(@Param("query") String query);
 }
